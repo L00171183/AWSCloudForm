@@ -1,0 +1,141 @@
+Parameters:
+  PAvailabilityZone: 
+    Default: us-east-1a
+    Description: "Avaibalbility Zone"
+    Type: String
+  PPublicSubnetCIDR: 
+    Default: 10.0.1.0/24
+    Description: "Public Subnet CIDR"
+    Type: String
+  PPrivateSubnetCIDR: 
+    Default: 10.0.2.0/24
+    Description: "Private Subnet CIDR"
+    Type: String
+  PVPCCIDR: 
+    Default: 10.0.0.0/16
+    Description: "VPC CIDR"
+    Type: String
+  PInstanceType:
+    Description: WebServer EC2 instance type
+    Type: String
+    Default: t2.micro
+    ConstraintDescription: must be a valid EC2 instance type
+Resources:
+  PVPC:
+    Type: 'AWS::EC2::VPC'
+    Properties: 
+      CidrBlock: !Ref PVPCCIDR
+      EnableDnsSupport: 'true'
+      EnableDnsHostnames: 'true'
+# VPC 
+  PInternetGateway:
+     Type: AWS::EC2::InternetGateway
+  PInternetAttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref PVPC
+      InternetGatewayId: !Ref PInternetGateway
+#route table
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref PVPC
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref PVPC
+  PublicRoute: 
+    Type: "AWS::EC2::Route"
+    DependsOn: PInternetAttachGateway
+    Properties: 
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref PInternetGateway
+      RouteTableId: !Ref PublicRouteTable
+#public subnetwork
+  PPublicSubnet:
+    Type: 'AWS::EC2::Subnet'
+    Properties: 
+      VpcId: !Ref PVPC
+      CidrBlock: !Ref PPublicSubnetCIDR
+      AvailabilityZone: !Ref PAvailabilityZone
+  PPublicSubnetRouteTableAssociation: 
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    Properties: 
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PPublicSubnet
+#private subnetwork
+  PPrivateSubnet:
+    Type: 'AWS::EC2::Subnet'
+    Properties: 
+      VpcId: !Ref PVPC
+      CidrBlock: !Ref PPrivateSubnetCIDR
+      AvailabilityZone: !Ref PAvailabilityZone
+  PPublicSubnetRouteTableAssociation: 
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    Properties: 
+      RouteTableId: !Ref PrivateRouteTable
+      SubnetId: !Ref PPrivateSubnet
+#JumpBox Instance
+  PPublicEC2:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      InstanceType: !Ref PInstanceType
+      ImageId: "ami-09d3b3274b6c5d4aa"
+      AvailabilityZone: !Ref PAvailabilityZone
+      NetworkInterfaces:
+        - SubnetId: !Ref PPublicSubnet
+          DeviceIndex: 0
+#JumpBox security group
+  PPublicSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties: 
+      GroupDescription: Allow http to client host
+      VpcId: !Ref PVPC
+  PPublicSecurityGroupInbound:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref PPublicSecurityGroup
+      IpProtocol: tcp
+      FromPort: 80
+      ToPort: 80
+      CidrIp: 0.0.0.0/0
+  PPublicSecurityGroupOutbound:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      GroupId: !Ref PPublicSecurityGroup
+      IpProtocol: tcp
+      FromPort: 80
+      ToPort: 80
+      DestinationSecurityGroupId: !Ref PPrivateSecurityGroup
+#App server instance
+  PPrivateEC2:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      InstanceType: !Ref PInstanceType
+      ImageId: "ami-09d3b3274b6c5d4aa"
+      AvailabilityZone: !Ref PAvailabilityZone
+      NetworkInterfaces:
+        - SubnetId: !Ref PPrivateSubnet
+          DeviceIndex: 0
+#app server security group
+  PPrivateSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties: 
+      GroupDescription: Allow http to client host
+      VpcId: !Ref PVPC
+  PPrivateSecurityGroupInbound:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref PPrivateSecurityGroup
+      IpProtocol: tcp
+      FromPort: 80
+      ToPort: 80
+      SourceSecurityGroupId: !Ref PPublicSecurityGroup
+  PPrivateSecurityGroupOutbound:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      GroupId: !Ref PPrivateSecurityGroup
+      IpProtocol: tcp
+      FromPort: 80
+      ToPort: 80
+      CidrIp: 0.0.0.0/0
