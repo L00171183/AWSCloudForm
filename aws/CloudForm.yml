@@ -1,128 +1,184 @@
+# Outputs:
+#   StackSSHSecurityGroup:
+#     Description: The SSH Security Group for our Company
+#     Value: !Ref MyCompanyWideSSHSecurityGroup
+#     Export:
+#       Name: SSHSecurityGroup
+
 Parameters:
-  PAvailabilityZone: 
+  AvailabilityZone1: 
     Default: us-east-1a
     Description: "Avaibalbility Zone"
     Type: String
-  PPublicSubnetCIDR: 
+  
+  AvailabilityZone2: 
+    Default: us-east-1b
+    Description: "Second Availability Zone"
+    Type: String
+    
+  PublicSubnetCIDR: 
     Default: 10.0.1.0/24
     Description: "Public Subnet CIDR"
     Type: String
-  PPrivateSubnetCIDR: 
+  
+  PrivateSubnetCIDR1: 
     Default: 10.0.2.0/24
     Description: "Private Subnet CIDR"
     Type: String
-  PVPCCIDR: 
+  
+  PrivateSubnetCIDR2: 
+    Default: 10.0.3.0/24
+    Description: "Private Subnet CIDR"
+    Type: String
+
+  VPCCIDR: 
     Default: 10.0.0.0/16
     Description: "VPC CIDR"
     Type: String
-  PInstanceType:
+  
+  InstanceType:
     Description: WebServer EC2 instance type
     Type: String
     Default: t2.micro
     ConstraintDescription: must be a valid EC2 instance type
+
+  ImageId1:
+    Type: String
+    Default: ami-09d3b3274b6c5d4aa
+
+  # ImageId2:
+  #   Type: String
+  #   Default: ami-089a545a9ed9893b6
+
 Resources:
-  PVPC:
+# VPC 
+  VPC:
     Type: 'AWS::EC2::VPC'
     Properties: 
-      CidrBlock: !Ref PVPCCIDR
+      CidrBlock: !Ref VPCCIDR
       EnableDnsSupport: 'true'
       EnableDnsHostnames: 'true'
-# VPC 
-  PInternetGateway:
+
+  InternetGateway:
      Type: AWS::EC2::InternetGateway
-  PInternetAttachGateway:
+  
+  InternetAttachGateway:
     Type: AWS::EC2::VPCGatewayAttachment
     Properties:
-      VpcId: !Ref PVPC
-      InternetGatewayId: !Ref PInternetGateway
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+
 #route table
   PublicRouteTable:
     Type: AWS::EC2::RouteTable
     Properties:
-      VpcId: !Ref PVPC
-  PrivateRouteTable:
-    Type: AWS::EC2::RouteTable
-    Properties:
-      VpcId: !Ref PVPC
+      VpcId: !Ref VPC
+      
+ #PrivateRouteTable:
+  # Type: AWS::EC2::RouteTable
+   #Properties:
+    # VpcId: !Ref VPC
+  
   PublicRoute: 
     Type: "AWS::EC2::Route"
-    DependsOn: PInternetAttachGateway
+    DependsOn: InternetAttachGateway
     Properties: 
       DestinationCidrBlock: 0.0.0.0/0
-      GatewayId: !Ref PInternetGateway
+      GatewayId: !Ref InternetGateway
       RouteTableId: !Ref PublicRouteTable
-#public subnetwork
-  PPublicSubnet:
+
+#public subnetwork for jumpbox
+  JumpBoxPublicSubnet:
     Type: 'AWS::EC2::Subnet'
     Properties: 
-      VpcId: !Ref PVPC
-      CidrBlock: !Ref PPublicSubnetCIDR
-      AvailabilityZone: !Ref PAvailabilityZone
-  PPublicSubnetRouteTableAssociation: 
+      VpcId: !Ref VPC
+      CidrBlock: !Ref PublicSubnetCIDR
+      AvailabilityZone: !Ref AvailabilityZone1
+  JumpBoxPublicSubnetRouteTableAssociation: 
     Type: "AWS::EC2::SubnetRouteTableAssociation"
     Properties: 
       RouteTableId: !Ref PublicRouteTable
-      SubnetId: !Ref PPublicSubnet
-#private subnetwork
-  PPrivateSubnet:
+      SubnetId: !Ref JumpBoxPublicSubnet
+
+# subnetwork for front end app instance
+  FrontEndAppSubnet:
     Type: 'AWS::EC2::Subnet'
     Properties: 
-      VpcId: !Ref PVPC
-      CidrBlock: !Ref PPrivateSubnetCIDR
-      AvailabilityZone: !Ref PAvailabilityZone
-  PPublicSubnetRouteTableAssociation: 
-    Type: "AWS::EC2::SubnetRouteTableAssociation"
+      VpcId: !Ref VPC
+      CidrBlock: !Ref PrivateSubnetCIDR2
+      AvailabilityZone: !Ref AvailabilityZone1
+
+#private subnetwork for app server instance
+  AppServerPrivateSubnet:
+    Type: 'AWS::EC2::Subnet'
     Properties: 
-      RouteTableId: !Ref PrivateRouteTable
-      SubnetId: !Ref PPrivateSubnet
+      VpcId: !Ref VPC
+      CidrBlock: !Ref PrivateSubnetCIDR1
+      AvailabilityZone: !Ref AvailabilityZone2
+  # AppServerPrivateSubnetRouteTableAssociation: 
+  #   Type: "AWS::EC2::SubnetRouteTableAssociation"
+  #   Properties: 
+  #    # RouteTableId: !Ref PrivateRouteTable
+  #     SubnetId: !Ref AppServerPrivateSubnet
+
 #JumpBox Instance
-  PPublicEC2:
+  JumpBoxEC2:
     Type: 'AWS::EC2::Instance'
     Properties:
-      InstanceType: !Ref PInstanceType
-      ImageId: "ami-09d3b3274b6c5d4aa"
-      AvailabilityZone: !Ref PAvailabilityZone
+      InstanceType: !Ref InstanceType
+      ImageId: !Ref ImageId1
+      AvailabilityZone: !Ref AvailabilityZone1
       NetworkInterfaces:
-        - SubnetId: !Ref PPublicSubnet
+        - SubnetId: !Ref JumpBoxPublicSubnet
           DeviceIndex: 0
 #JumpBox security group
-  PPublicSecurityGroup:
+  JumpBoxSecurityGroup:
     Type: 'AWS::EC2::SecurityGroup'
     Properties: 
       GroupDescription: Allow http to client host
-      VpcId: !Ref PVPC
-  PPublicSecurityGroupInbound:
+      VpcId: !Ref VPC
+  JumpBoxSecurityGroupInbound:
     Type: AWS::EC2::SecurityGroupIngress
     Properties:
-      GroupId: !Ref PPublicSecurityGroup
+      GroupId: !Ref JumpBoxSecurityGroup
       IpProtocol: tcp
       FromPort: 80
       ToPort: 80
       CidrIp: 0.0.0.0/0
-  PPublicSecurityGroupOutbound:
+  JumpBoxSecurityGroupOutbound1:
     Type: AWS::EC2::SecurityGroupEgress
     Properties:
-      GroupId: !Ref PPublicSecurityGroup
+      GroupId: !Ref JumpBoxSecurityGroup
       IpProtocol: tcp
       FromPort: 80
       ToPort: 80
       DestinationSecurityGroupId: !Ref PPrivateSecurityGroup
+  
+  JumpBoxSecurityGroupOutbound2:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      GroupId: !Ref JumpBoxSecurityGroup
+      IpProtocol: tcp
+      FromPort: 80
+      ToPort: 80
+      DestinationSecurityGroupId: !Ref FrontEndAppSecurityGroup
+
 #App server instance
   PPrivateEC2:
     Type: 'AWS::EC2::Instance'
     Properties:
-      InstanceType: !Ref PInstanceType
-      ImageId: "ami-09d3b3274b6c5d4aa"
-      AvailabilityZone: !Ref PAvailabilityZone
+      InstanceType: !Ref InstanceType
+      ImageId: !Ref ImageId1
+      AvailabilityZone: !Ref AvailabilityZone2
       NetworkInterfaces:
-        - SubnetId: !Ref PPrivateSubnet
+        - SubnetId: !Ref AppServerPrivateSubnet
           DeviceIndex: 0
 #app server security group
   PPrivateSecurityGroup:
     Type: 'AWS::EC2::SecurityGroup'
     Properties: 
       GroupDescription: Allow http to client host
-      VpcId: !Ref PVPC
+      VpcId: !Ref VPC
   PPrivateSecurityGroupInbound:
     Type: AWS::EC2::SecurityGroupIngress
     Properties:
@@ -130,5 +186,58 @@ Resources:
       IpProtocol: tcp
       FromPort: 80
       ToPort: 80
-      SourceSecurityGroupId: !Ref PPublicSecurityGroup
+      SourceSecurityGroupId: !Ref JumpBoxSecurityGroup
+
+  PPrivateSecurityGroupInbound2:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref PPrivateSecurityGroup
+      IpProtocol: tcp
+      FromPort: 80
+      ToPort: 80
+      SourceSecurityGroupId: !Ref FrontEndAppSecurityGroup
+
+#Front end App instance
+  FrontEndAppEC2:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      InstanceType: !Ref InstanceType
+      ImageId: !Ref ImageId1
+      AvailabilityZone: !Ref AvailabilityZone1
+      NetworkInterfaces:
+        - SubnetId: !Ref FrontEndAppSubnet
+          DeviceIndex: 0
+
+#front end app security group
+  FrontEndAppSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties: 
+      GroupDescription: Allow http to client host
+      VpcId: !Ref VPC
+  FrontEndAppSecurityGroupInbound1:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref FrontEndAppSecurityGroup
+      IpProtocol: tcp
+      FromPort: 80
+      ToPort: 80
+      SourceSecurityGroupId: !Ref JumpBoxSecurityGroup
+
+  FrontEndAppSecurityGroupOutbound1:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      GroupId: !Ref FrontEndAppSecurityGroup
+      IpProtocol: tcp
+      FromPort: 80
+      ToPort: 80
+      DestinationSecurityGroupId: !Ref PPrivateSecurityGroup
+
+  FrontEndAppSecurityGroupOutbound2:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      GroupId: !Ref FrontEndAppSecurityGroup
+      IpProtocol: tcp
+      FromPort: 80
+      ToPort: 80
+      DestinationSecurityGroupId: !Ref FrontEndAppSecurityGroup
   
