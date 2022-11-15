@@ -42,13 +42,33 @@ Parameters:
     Default: t2.micro
     ConstraintDescription: must be a valid EC2 instance type
 
-  ImageId1:
-    Type: String
-    Default: ami-09d3b3274b6c5d4aa
+  # ImageId1:
+  #   Type: String
+  #   Default: ami-09d3b3274b6c5d4aa
 
   # ImageId2:
   #   Type: String
   #   Default: ami-089a545a9ed9893b6
+
+  EnvironmentName:
+    Description: Environment Name
+    Type: String
+    AllowedValues: [development, production]
+    ConstraintDescription: must be development or production
+
+Mappings:
+  
+  EnvironmentToInstanceType:
+    development:
+      instanceType: t2.micro
+    production:
+      instanceType: t2.small
+
+  AWSRegionArch2AMI:
+    us-east-1:
+      HVM64: "ami-09d3b3274b6c5d4aa"
+
+
 
 Resources:
 # VPC 
@@ -106,7 +126,7 @@ Resources:
     Properties: 
       VpcId: !Ref VPC
       CidrBlock: !Ref PrivateSubnetCIDR2
-      AvailabilityZone: !Ref AvailabilityZone1
+      AvailabilityZone: !Ref AvailabilityZone2
 
 #private subnetwork for app server instance
   AppServerPrivateSubnet:
@@ -114,19 +134,20 @@ Resources:
     Properties: 
       VpcId: !Ref VPC
       CidrBlock: !Ref PrivateSubnetCIDR1
-      AvailabilityZone: !Ref AvailabilityZone2
+      AvailabilityZone: !Ref AvailabilityZone1
   # AppServerPrivateSubnetRouteTableAssociation: 
   #   Type: "AWS::EC2::SubnetRouteTableAssociation"
   #   Properties: 
   #    # RouteTableId: !Ref PrivateRouteTable
   #     SubnetId: !Ref AppServerPrivateSubnet
 
+
 #JumpBox Instance
   JumpBoxEC2:
     Type: 'AWS::EC2::Instance'
     Properties:
-      InstanceType: !Ref InstanceType
-      ImageId: !Ref ImageId1
+      InstanceType: !FindInMap [EnvironmentToInstanceType, !Ref 'EnvironmentName', instanceType]
+      ImageId: !FindInMap [AWSRegionArch2AMI, !Ref 'AWS::Region', HVM64]
       AvailabilityZone: !Ref AvailabilityZone1
       NetworkInterfaces:
         - SubnetId: !Ref JumpBoxPublicSubnet
@@ -168,8 +189,8 @@ Resources:
     Type: 'AWS::EC2::Instance'
     Properties:
       InstanceType: !Ref InstanceType
-      ImageId: !Ref ImageId1
-      AvailabilityZone: !Ref AvailabilityZone2
+      ImageId: !FindInMap [AWSRegionArch2AMI, !Ref 'AWS::Region', HVM64]
+      AvailabilityZone: !Ref AvailabilityZone1
       NetworkInterfaces:
         - SubnetId: !Ref AppServerPrivateSubnet
           DeviceIndex: 0
@@ -202,8 +223,8 @@ Resources:
     Type: 'AWS::EC2::Instance'
     Properties:
       InstanceType: !Ref InstanceType
-      ImageId: !Ref ImageId1
-      AvailabilityZone: !Ref AvailabilityZone1
+      ImageId: !FindInMap [AWSRegionArch2AMI, !Ref 'AWS::Region', HVM64]
+      AvailabilityZone: !Ref AvailabilityZone2
       NetworkInterfaces:
         - SubnetId: !Ref FrontEndAppSubnet
           DeviceIndex: 0
@@ -240,4 +261,6 @@ Resources:
       FromPort: 80
       ToPort: 80
       DestinationSecurityGroupId: !Ref FrontEndAppSecurityGroup
+
+#DB Instance
   
