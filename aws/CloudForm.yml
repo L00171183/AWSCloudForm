@@ -42,14 +42,6 @@ Parameters:
     Default: t2.micro
     ConstraintDescription: must be a valid EC2 instance type
 
-  # ImageId1:
-  #   Type: String
-  #   Default: ami-09d3b3274b6c5d4aa
-
-  # ImageId2:
-  #   Type: String
-  #   Default: ami-089a545a9ed9893b6
-
   EnvironmentName:
     Description: Environment Name
     Type: String
@@ -64,7 +56,7 @@ Mappings:
     production:
       instanceType: t2.small
 
-  AWSRegionArch2AMI:
+  AWSRegion:
     us-east-1:
       HVM64: "ami-09d3b3274b6c5d4aa"
 
@@ -78,6 +70,15 @@ Resources:
       CidrBlock: !Ref VPCCIDR
       EnableDnsSupport: 'true'
       EnableDnsHostnames: 'true'
+
+#public subnetwork for jumpbox
+  JumpBoxPublicSubnet:
+    Type: 'AWS::EC2::Subnet'
+    Properties: 
+      VpcId: !Ref VPC
+      CidrBlock: !Ref PublicSubnetCIDR
+      MapPublicIpOnLaunch: true
+      AvailabilityZone: !Ref AvailabilityZone1
 
   InternetGateway:
      Type: AWS::EC2::InternetGateway
@@ -107,13 +108,8 @@ Resources:
       GatewayId: !Ref InternetGateway
       RouteTableId: !Ref PublicRouteTable
 
-#public subnetwork for jumpbox
-  JumpBoxPublicSubnet:
-    Type: 'AWS::EC2::Subnet'
-    Properties: 
-      VpcId: !Ref VPC
-      CidrBlock: !Ref PublicSubnetCIDR
-      AvailabilityZone: !Ref AvailabilityZone1
+
+
   JumpBoxPublicSubnetRouteTableAssociation: 
     Type: "AWS::EC2::SubnetRouteTableAssociation"
     Properties: 
@@ -135,6 +131,7 @@ Resources:
       VpcId: !Ref VPC
       CidrBlock: !Ref PrivateSubnetCIDR1
       AvailabilityZone: !Ref AvailabilityZone1
+
   # AppServerPrivateSubnetRouteTableAssociation: 
   #   Type: "AWS::EC2::SubnetRouteTableAssociation"
   #   Properties: 
@@ -147,10 +144,15 @@ Resources:
     Type: 'AWS::EC2::Instance'
     Properties:
       InstanceType: !FindInMap [EnvironmentToInstanceType, !Ref 'EnvironmentName', instanceType]
-      ImageId: !FindInMap [AWSRegionArch2AMI, !Ref 'AWS::Region', HVM64]
+      ImageId: !FindInMap [AWSRegion, !Ref 'AWS::Region', HVM64]
+      KeyName: InstanceKey
       AvailabilityZone: !Ref AvailabilityZone1
+      # SecurityGroupIds:
+      #   - !Ref JumpBoxSecurityGroup
       NetworkInterfaces:
         - SubnetId: !Ref JumpBoxPublicSubnet
+          GroupSet: 
+            - !Ref JumpBoxSecurityGroup
           DeviceIndex: 0
 #JumpBox security group
   JumpBoxSecurityGroup:
@@ -163,16 +165,16 @@ Resources:
     Properties:
       GroupId: !Ref JumpBoxSecurityGroup
       IpProtocol: tcp
-      FromPort: 80
-      ToPort: 80
+      FromPort: 22
+      ToPort: 22
       CidrIp: 0.0.0.0/0
   JumpBoxSecurityGroupOutbound1:
     Type: AWS::EC2::SecurityGroupEgress
     Properties:
       GroupId: !Ref JumpBoxSecurityGroup
       IpProtocol: tcp
-      FromPort: 80
-      ToPort: 80
+      FromPort: 22
+      ToPort: 22
       DestinationSecurityGroupId: !Ref PPrivateSecurityGroup
   
   JumpBoxSecurityGroupOutbound2:
@@ -180,8 +182,8 @@ Resources:
     Properties:
       GroupId: !Ref JumpBoxSecurityGroup
       IpProtocol: tcp
-      FromPort: 80
-      ToPort: 80
+      FromPort: 22
+      ToPort: 22
       DestinationSecurityGroupId: !Ref FrontEndAppSecurityGroup
 
 #App server instance
@@ -189,10 +191,13 @@ Resources:
     Type: 'AWS::EC2::Instance'
     Properties:
       InstanceType: !Ref InstanceType
-      ImageId: !FindInMap [AWSRegionArch2AMI, !Ref 'AWS::Region', HVM64]
+      ImageId: !FindInMap [AWSRegion, !Ref 'AWS::Region', HVM64]
+      KeyName: InstanceKey
       AvailabilityZone: !Ref AvailabilityZone1
       NetworkInterfaces:
         - SubnetId: !Ref AppServerPrivateSubnet
+          GroupSet: 
+            - !Ref PPrivateSecurityGroup
           DeviceIndex: 0
 #app server security group
   PPrivateSecurityGroup:
@@ -205,28 +210,31 @@ Resources:
     Properties:
       GroupId: !Ref PPrivateSecurityGroup
       IpProtocol: tcp
-      FromPort: 80
-      ToPort: 80
+      FromPort: 22
+      ToPort: 22
       SourceSecurityGroupId: !Ref JumpBoxSecurityGroup
 
-  PPrivateSecurityGroupInbound2:
-    Type: AWS::EC2::SecurityGroupIngress
-    Properties:
-      GroupId: !Ref PPrivateSecurityGroup
-      IpProtocol: tcp
-      FromPort: 80
-      ToPort: 80
-      SourceSecurityGroupId: !Ref FrontEndAppSecurityGroup
+  # PPrivateSecurityGroupInbound2:
+  #   Type: AWS::EC2::SecurityGroupIngress
+  #   Properties:
+  #     GroupId: !Ref PPrivateSecurityGroup
+  #     IpProtocol: tcp
+  #     FromPort: 22
+  #     ToPort: 22
+  #     SourceSecurityGroupId: !Ref FrontEndAppSecurityGroup
 
 #Front end App instance
   FrontEndAppEC2:
     Type: 'AWS::EC2::Instance'
     Properties:
       InstanceType: !Ref InstanceType
-      ImageId: !FindInMap [AWSRegionArch2AMI, !Ref 'AWS::Region', HVM64]
+      ImageId: !FindInMap [AWSRegion, !Ref 'AWS::Region', HVM64]
       AvailabilityZone: !Ref AvailabilityZone2
+      KeyName: InstanceKey
       NetworkInterfaces:
         - SubnetId: !Ref FrontEndAppSubnet
+          GroupSet: 
+            - !Ref FrontEndAppSecurityGroup
           DeviceIndex: 0
 
 #front end app security group
@@ -240,27 +248,27 @@ Resources:
     Properties:
       GroupId: !Ref FrontEndAppSecurityGroup
       IpProtocol: tcp
-      FromPort: 80
-      ToPort: 80
+      FromPort: 22
+      ToPort: 22
       SourceSecurityGroupId: !Ref JumpBoxSecurityGroup
 
-  FrontEndAppSecurityGroupOutbound1:
-    Type: AWS::EC2::SecurityGroupEgress
-    Properties:
-      GroupId: !Ref FrontEndAppSecurityGroup
-      IpProtocol: tcp
-      FromPort: 80
-      ToPort: 80
-      DestinationSecurityGroupId: !Ref PPrivateSecurityGroup
+  # FrontEndAppSecurityGroupOutbound1:
+  #   Type: AWS::EC2::SecurityGroupEgress
+  #   Properties:
+  #     GroupId: !Ref FrontEndAppSecurityGroup
+  #     IpProtocol: tcp
+  #     FromPort: 22
+  #     ToPort: 22
+  #     DestinationSecurityGroupId: !Ref PPrivateSecurityGroup
 
-  FrontEndAppSecurityGroupOutbound2:
-    Type: AWS::EC2::SecurityGroupEgress
-    Properties:
-      GroupId: !Ref FrontEndAppSecurityGroup
-      IpProtocol: tcp
-      FromPort: 80
-      ToPort: 80
-      DestinationSecurityGroupId: !Ref FrontEndAppSecurityGroup
+  # FrontEndAppSecurityGroupOutbound2:
+  #   Type: AWS::EC2::SecurityGroupEgress
+  #   Properties:
+  #     GroupId: !Ref FrontEndAppSecurityGroup
+  #     IpProtocol: tcp
+  #     FromPort: 22
+  #     ToPort: 22
+  #     DestinationSecurityGroupId: !Ref FrontEndAppSecurityGroup
 
 #DB Instance
   
