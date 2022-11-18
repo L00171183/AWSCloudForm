@@ -1,0 +1,25 @@
+Parameters:
+
+  VPCCIDR: 
+    Default: 10.0.0.0/16
+    Description: "VPC CIDR"
+    Type: String
+  
+Resources:
+# VPC 
+  VPC:
+    Type: 'AWS::EC2::VPC'
+    Properties: 
+      CidrBlock: !Ref VPCCIDR
+      EnableDnsSupport: 'true'
+      EnableDnsHostnames: 'true'
+
+
+
+Outputs:
+  CloudFormVPC:
+    Description: This is the VPC for our cloud formation
+    Value: !Ref VPC
+    Export:
+      Name: CloudVPC
+  

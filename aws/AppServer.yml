@@ -1,0 +1,61 @@
+Parameters:
+
+  AvailabilityZone1: 
+    Default: us-east-1a
+    Description: "Avaibalbility Zone"
+    Type: String
+
+  InstanceType:
+    Description: WebServer EC2 instance type
+    Type: String
+    Default: t2.micro
+    ConstraintDescription: must be a valid EC2 instance type
+
+Mappings:
+  
+  AWSRegion:
+    us-east-1:
+      HVM64: "ami-09d3b3274b6c5d4aa"
+    us-east-2:
+      HVM64: ami-05d72852800cbf29e
+    us-west-1:
+      HVM64: ami-0577b787189839998
+    us-west-2:
+      HVM64: ami-0518bb0e75d3619ca
+
+Resources:
+
+#App server instance
+  AppServerEC2:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      InstanceType: !Ref InstanceType
+      ImageId: !FindInMap [AWSRegion, !Ref 'AWS::Region', HVM64]
+      KeyName: InstanceKey
+      AvailabilityZone: !Ref AvailabilityZone1
+      NetworkInterfaces:
+        - SubnetId: !ImportValue AppServerPrivateSubnetImport
+          GroupSet: 
+            - !ImportValue AppServerSecurityGroupImport
+          DeviceIndex: 0
+#app server security group
+  AppServerSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties: 
+      GroupDescription: Enable SSH access via port 22
+      VpcId: !ImportValue CloudVPC
+  AppServerSecurityGroupInbound:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref AppServerSecurityGroup
+      IpProtocol: tcp
+      FromPort: 22
+      ToPort: 22
+      SourceSecurityGroupId: !ImportValue JumpBoxSecurityGroupImport
+
+# Outputs:
+#   AppServerSecurityGroupExport:
+#     Description: Security group for app server
+#     Value: !Ref AppServerSecurityGroup
+#     Export:
+#       Name: AppServerSecurityGroupImport

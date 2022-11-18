@@ -59,6 +59,12 @@ Mappings:
   AWSRegion:
     us-east-1:
       HVM64: "ami-09d3b3274b6c5d4aa"
+    us-east-2:
+      HVM64: ami-05d72852800cbf29e
+    us-west-1:
+      HVM64: ami-0577b787189839998
+    us-west-2:
+      HVM64: ami-0518bb0e75d3619ca
 
 
 
@@ -158,7 +164,7 @@ Resources:
   JumpBoxSecurityGroup:
     Type: 'AWS::EC2::SecurityGroup'
     Properties: 
-      GroupDescription: Allow http to client host
+      GroupDescription: Enable SSH access via port 22
       VpcId: !Ref VPC
   JumpBoxSecurityGroupInbound:
     Type: AWS::EC2::SecurityGroupIngress
@@ -203,7 +209,7 @@ Resources:
   PPrivateSecurityGroup:
     Type: 'AWS::EC2::SecurityGroup'
     Properties: 
-      GroupDescription: Allow http to client host
+      GroupDescription: Enable SSH access via port 22
       VpcId: !Ref VPC
   PPrivateSecurityGroupInbound:
     Type: AWS::EC2::SecurityGroupIngress
@@ -241,7 +247,7 @@ Resources:
   FrontEndAppSecurityGroup:
     Type: 'AWS::EC2::SecurityGroup'
     Properties: 
-      GroupDescription: Allow http to client host
+      GroupDescription: Enable SSH access via port 22
       VpcId: !Ref VPC
   FrontEndAppSecurityGroupInbound1:
     Type: AWS::EC2::SecurityGroupIngress

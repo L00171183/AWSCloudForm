@@ -1,0 +1,194 @@
+Parameters:
+
+  PublicSubnetCIDR: 
+    Default: 10.0.1.0/24
+    Description: "Public Subnet CIDR"
+    Type: String
+  
+  PrivateSubnetCIDR1: 
+    Default: 10.0.2.0/24
+    Description: "Private Subnet CIDR"
+    Type: String
+  
+  PrivateSubnetCIDR2: 
+    Default: 10.0.3.0/24
+    Description: "Private Subnet CIDR"
+    Type: String
+
+  AvailabilityZone1: 
+    Default: us-east-1a
+    Description: "Avaibalbility Zone"
+    Type: String
+  
+  AvailabilityZone2: 
+    Default: us-east-1b
+    Description: "Second Availability Zone"
+    Type: String
+
+
+Resources:
+
+  InternetGateway:
+     Type: AWS::EC2::InternetGateway
+  
+  InternetAttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !ImportValue CloudVPC
+      InternetGatewayId: !Ref InternetGateway
+
+#route table for internet gateway 
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !ImportValue CloudVPC
+      
+ # route table for nat gateway
+
+ #PrivateRouteTable:
+  # Type: AWS::EC2::RouteTable
+   #Properties:
+    # VpcId: !Ref VPC
+  
+  PublicRoute: 
+    Type: "AWS::EC2::Route"
+    DependsOn: InternetAttachGateway
+    Properties: 
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+      RouteTableId: !Ref PublicRouteTable
+
+  JumpBoxPublicSubnetRouteTableAssociation: 
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    Properties: 
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref JumpBoxPublicSubnet
+
+
+#public subnetwork for jumpbox
+  JumpBoxPublicSubnet:
+    Type: 'AWS::EC2::Subnet'
+    Properties: 
+      VpcId: !ImportValue CloudVPC
+      CidrBlock: !Ref PublicSubnetCIDR
+      MapPublicIpOnLaunch: true
+      AvailabilityZone: !Ref AvailabilityZone1
+
+
+#private subnetwork for app server instance
+  AppServerPrivateSubnet:
+    Type: 'AWS::EC2::Subnet'
+    Properties: 
+      VpcId: !ImportValue CloudVPC
+      CidrBlock: !Ref PrivateSubnetCIDR1
+      AvailabilityZone: !Ref AvailabilityZone1
+
+# subnetwork for front end app instance
+  FrontEndAppSubnet:
+    Type: 'AWS::EC2::Subnet'
+    Properties: 
+      VpcId: !ImportValue CloudVPC
+      CidrBlock: !Ref PrivateSubnetCIDR2
+      AvailabilityZone: !Ref AvailabilityZone2
+
+#JumpBox security group
+  JumpBoxSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties: 
+      GroupDescription: Enable SSH access via port 22
+      VpcId: !ImportValue CloudVPC
+ 
+  JumpBoxSecurityGroupInbound:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref JumpBoxSecurityGroup
+      IpProtocol: tcp
+      FromPort: 22
+      ToPort: 22
+      CidrIp: 0.0.0.0/0
+  
+  JumpBoxSecurityGroupOutbound1:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      GroupId: !Ref JumpBoxSecurityGroup
+      IpProtocol: tcp
+      FromPort: 22
+      ToPort: 22
+      DestinationSecurityGroupId: !Ref AppServerSecurityGroup
+
+  JumpBoxSecurityGroupOutbound2:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      GroupId: !Ref JumpBoxSecurityGroup
+      IpProtocol: tcp
+      FromPort: 22
+      ToPort: 22
+      DestinationSecurityGroupId: !Ref FrontEndAppSecurityGroup
+
+#app server security group
+  AppServerSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties: 
+      GroupDescription: Enable SSH access via port 22
+      VpcId: !ImportValue CloudVPC
+  AppServerSecurityGroupInbound:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref AppServerSecurityGroup
+      IpProtocol: tcp
+      FromPort: 22
+      ToPort: 22
+      SourceSecurityGroupId: !Ref JumpBoxSecurityGroup
+
+#front end app security group
+  FrontEndAppSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties: 
+      GroupDescription: Enable SSH access via port 22
+      VpcId: !ImportValue CloudVPC
+  FrontEndAppSecurityGroupInbound1:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref FrontEndAppSecurityGroup
+      IpProtocol: tcp
+      FromPort: 22
+      ToPort: 22
+      SourceSecurityGroupId: !Ref JumpBoxSecurityGroup
+
+Outputs:
+  JumpBoxPublicSubnetExport:
+    Description: Public subnetwork for jumpbox
+    Value: !Ref JumpBoxPublicSubnet
+    Export:
+      Name: JumpBoxPublicSubnetImport
+
+  AppServerPrivateSubnetExport:
+    Description: Private subnetwork for app server
+    Value: !Ref AppServerPrivateSubnet
+    Export:
+      Name: AppServerPrivateSubnetImport
+
+  FrontEndAppSubnetExport:
+    Description: Private subnetwork for frontend app
+    Value: !Ref FrontEndAppSubnet
+    Export:
+      Name: FrontEndAppSubnetImport
+
+  JumpBoxSecurityGroupExport:
+    Description: Security group for jumpbox
+    Value: !Ref JumpBoxSecurityGroup 
+    Export:
+      Name: JumpBoxSecurityGroupImport
+
+  AppServerSecurityGroupExport:
+    Description: Security group for app server
+    Value: !Ref AppServerSecurityGroup
+    Export:
+      Name: AppServerSecurityGroupImport
+
+  FrontEndAppSecurityGroupExport:
+    Description: Security group for app server
+    Value: !Ref FrontEndAppSecurityGroup
+    Export:
+      Name: FrontEndAppSecurityGroupImport
