@@ -1,17 +1,17 @@
 Parameters:
 
   PublicSubnetCIDR: 
-    Default: 10.0.0.0/24
+    Default: 10.0.1.0/24
     Description: "Public Subnet CIDR"
     Type: String
   
   PrivateSubnetCIDR1: 
-    Default: 10.0.1.0/24
+    Default: 10.0.2.0/24
     Description: "Private Subnet CIDR"
     Type: String
   
   PrivateSubnetCIDR2: 
-    Default: 10.0.2.0/24
+    Default: 10.0.3.0/24
     Description: "Private Subnet CIDR"
     Type: String
 
@@ -126,6 +126,7 @@ Resources:
       ToPort: 22
       DestinationSecurityGroupId: !Ref FrontEndAppSecurityGroup
 
+
 #app server security group
   AppServerSecurityGroup:
     Type: 'AWS::EC2::SecurityGroup'
@@ -140,6 +141,22 @@ Resources:
       FromPort: 22
       ToPort: 22
       SourceSecurityGroupId: !Ref JumpBoxSecurityGroup
+  AppServerSecurityGroupOutbound1:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      GroupId: !Ref AppServerSecurityGroup
+      IpProtocol: tcp
+      FromPort: 22
+      ToPort: 22
+      DestinationSecurityGroupId: !Ref JumpBoxSecurityGroup
+  AppServerSecurityGroupOutbound2:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      GroupId: !Ref AppServerSecurityGroup
+      IpProtocol: tcp
+      FromPort: 3306
+      ToPort: 3306
+      DestinationSecurityGroupId: !ImportValue DatabseInstanceSecurityGroupImport
 
 #front end app security group
   FrontEndAppSecurityGroup:

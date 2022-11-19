@@ -5,18 +5,23 @@ Parameters:
     Description: "Availability Zone"
     Type: String
 
+  PrivateSubnetCIDR1: 
+    Default: 10.0.2.0/24
+    Description: "Private Subnet CIDR"
+    Type: String
+
   PrivateSubnetCIDR2: 
     Default: 10.0.3.0/24
     Description: "Private Subnet CIDR"
     Type: String
 
   DatabaseSubnetCIDR1: 
-    Default: 10.0.3.0/24
+    Default: 10.0.4.0/24
     Description: "Database Subnet1 IP Range"
     Type: String
   
   DatabaseSubnetCIDR2: 
-    Default: 10.0.4.0/24
+    Default: 10.0.5.0/24
     Description: "Database Subnet2 IP Range"
     Type: String
  
@@ -143,18 +148,25 @@ Resources:
       - IpProtocol: tcp
         FromPort: '3306'
         ToPort: '3306'
-        CidrIp: !Ref PrivateSubnetCIDR2
+        CidrIp: !Ref PrivateSubnetCIDR1
       - IpProtocol: tcp
         FromPort: '22'
         ToPort: '22'
-        CidrIp: !Ref PrivateSubnetCIDR2
+        CidrIp: !Ref PrivateSubnetCIDR1
   
-  DatabaseSecurityGroup:
-    Type: AWS::RDS::DBSecurityGroup
-    Properties:
-      EC2VpcId: !ImportValue CloudVPC
-      DBSecurityGroupIngress:
-        EC2SecurityGroupId: !ImportValue AppServerSecurityGroupImport
-      GroupDescription: database access
+  # DatabaseSecurityGroup:
+  #   Type: AWS::RDS::DBSecurityGroup
+  #   Properties:
+  #     EC2VpcId: !ImportValue CloudVPC
+  #     DBSecurityGroupIngress:
+  #       EC2SecurityGroupId: !ImportValue AppServerSecurityGroupImport
+  #     GroupDescription: database access
 
+Outputs:
+
+  DatabseInstanceSecurityGroupExport:
+    Description: Security group for app server
+    Value: !Ref DatabseInstanceSecurityGroup
+    Export:
+      Name: DatabseInstanceSecurityGroupImport
 

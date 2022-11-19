@@ -38,20 +38,7 @@ Resources:
           GroupSet: 
             - !ImportValue AppServerSecurityGroupImport
           DeviceIndex: 0
-#app server security group
-  AppServerSecurityGroup:
-    Type: 'AWS::EC2::SecurityGroup'
-    Properties: 
-      GroupDescription: Enable SSH access via port 22
-      VpcId: !ImportValue CloudVPC
-  AppServerSecurityGroupInbound:
-    Type: AWS::EC2::SecurityGroupIngress
-    Properties:
-      GroupId: !Ref AppServerSecurityGroup
-      IpProtocol: tcp
-      FromPort: 22
-      ToPort: 22
-      SourceSecurityGroupId: !ImportValue JumpBoxSecurityGroupImport
+
 
 # Outputs:
 #   AppServerSecurityGroupExport:
