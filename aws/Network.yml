@@ -1,17 +1,17 @@
 Parameters:
 
   PublicSubnetCIDR: 
-    Default: 10.0.1.0/24
+    Default: 10.0.0.0/24
     Description: "Public Subnet CIDR"
     Type: String
   
   PrivateSubnetCIDR1: 
-    Default: 10.0.2.0/24
+    Default: 10.0.1.0/24
     Description: "Private Subnet CIDR"
     Type: String
   
   PrivateSubnetCIDR2: 
-    Default: 10.0.3.0/24
+    Default: 10.0.2.0/24
     Description: "Private Subnet CIDR"
     Type: String
 

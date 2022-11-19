@@ -1,0 +1,160 @@
+Parameters:
+
+  AvailabilityZone2: 
+    Default: us-east-1b
+    Description: "Availability Zone"
+    Type: String
+
+  PrivateSubnetCIDR2: 
+    Default: 10.0.3.0/24
+    Description: "Private Subnet CIDR"
+    Type: String
+
+  DatabaseSubnetCIDR1: 
+    Default: 10.0.3.0/24
+    Description: "Database Subnet1 IP Range"
+    Type: String
+  
+  DatabaseSubnetCIDR2: 
+    Default: 10.0.4.0/24
+    Description: "Database Subnet2 IP Range"
+    Type: String
+ 
+  DatabaseInstanceIdentifier:
+    AllowedPattern: '[a-zA-Z][a-zA-Z0-9]*'
+    ConstraintDescription: should contain only alphanumeric characters and begin with a letter
+    Default: MySqlDb
+    Description: Instance identifier name
+    MaxLength: '70'
+    MinLength: '1'
+    Type: String
+   
+  DatabaseName:
+    AllowedPattern: '[a-zA-Z][a-zA-Z0-9]*'
+    ConstraintDescription: should contain only alphanumeric characters and begin with a letter
+    Default: MyApplicagtionDb
+    Description: My SQL database name name
+    MaxLength: '70'
+    MinLength: '1'
+    Type: String
+  
+  DatabaseUserName:
+    AllowedPattern: '[a-zA-Z][a-zA-Z0-9]*'
+    ConstraintDescription: should contain only alphanumeric characters and begin with a letter
+    Default: DbAdminName
+    Description: username for database access
+    MaxLength: '20'
+    MinLength: '1'
+    NoEcho: 'true'
+    Type: String
+
+  DatabasePassword:
+    AllowedPattern: '[a-zA-Z][a-zA-Z0-9]*'
+    ConstraintDescription: should contain only alphanumeric characters and begin with a letter
+    Default: TestData123
+    Description: password for database access
+    MaxLength: '40'
+    MinLength: '1'
+    NoEcho: 'true'
+    Type: String
+  
+  DatabaseAllocatedStorage:
+    ConstraintDescription: must be between 5 and 25gb
+    Default: 10
+    Description: size of the database
+    MaxValue: 25
+    MinValue: 5
+    Type: Number
+  
+  DatabaseInstanceClass:
+    ConstraintDescription: must select a valid database instance type
+    Default: db.t2.micro
+    Description: Database instance type
+    Type: String
+
+  DatabaseMultiAZ:
+    AllowedValues: 
+     - true
+     - false
+    ConstraintDescription: must be either true or false
+    Default: true
+    Description: creates a multi-AZ Amazon RDS database instance 
+    Type: String
+
+Resources:
+
+  DatabaseSubnet1:
+    Type: "AWS::EC2::Subnet" 
+    Properties: 
+      VpcId: !ImportValue CloudVPC
+      # AvailabilityZone: !Ref AvailabilityZone2
+      AvailabilityZone: !Select 
+        - 0
+        - Fn::GetAZs: !Ref 'AWS::Region'
+      CidrBlock: !Ref DatabaseSubnetCIDR1
+
+  DatabaseSubnet2:
+    Type: "AWS::EC2::Subnet" 
+    Properties: 
+      VpcId: !ImportValue CloudVPC
+      # AvailabilityZone: !Ref AvailabilityZone2
+      AvailabilityZone: !Select 
+        - 1
+        - Fn::GetAZs: !Ref 'AWS::Region'
+      CidrBlock: !Ref DatabaseSubnetCIDR2
+  
+  DatabaseSubnetGroup:
+    Type: "AWS::RDS::DBSubnetGroup"
+    Properties:
+      DBSubnetGroupName: "DatabseBSubnetGroup"
+      DBSubnetGroupDescription: "Database Subnet Group"
+      SubnetIds:
+      - !Ref "DatabaseSubnet1"
+      - !Ref "DatabaseSubnet2"
+  
+  DatabaseInstance:
+    Type: "AWS::RDS::DBInstance"
+    Properties:
+      DBName: !Ref DatabaseName
+      DBInstanceIdentifier: !Ref DatabaseInstanceIdentifier
+      DBSubnetGroupName: !Ref DatabaseSubnetGroup
+      Engine: MySQL
+      MasterUsername: !Ref DatabaseUserName
+      MasterUserPassword: !Ref DatabasePassword
+      DBInstanceClass: !Ref DatabaseInstanceClass
+      # DBSecurityGroups: !Ref DatabseInstanceSecurityGroup
+      VPCSecurityGroups: 
+        - !GetAtt DatabseInstanceSecurityGroup.GroupId
+      AllocatedStorage: !Ref DatabaseAllocatedStorage
+      MultiAZ: !Ref DatabaseMultiAZ
+      # ScalingConfiguration:
+        # AutoPause: true
+        # MaxCapacity: 16
+        # MinCapacity: 2
+        # SecondsUntilAutoPause: 300
+  
+  
+  DatabseInstanceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !ImportValue CloudVPC
+      GroupDescription: accesing database
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: '3306'
+        ToPort: '3306'
+        CidrIp: !Ref PrivateSubnetCIDR2
+      - IpProtocol: tcp
+        FromPort: '22'
+        ToPort: '22'
+        CidrIp: !Ref PrivateSubnetCIDR2
+  
+  DatabaseSecurityGroup:
+    Type: AWS::RDS::DBSecurityGroup
+    Properties:
+      EC2VpcId: !ImportValue CloudVPC
+      DBSecurityGroupIngress:
+        EC2SecurityGroupId: !ImportValue AppServerSecurityGroupImport
+      GroupDescription: database access
+
+
