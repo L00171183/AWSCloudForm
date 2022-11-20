@@ -88,11 +88,11 @@ Parameters:
 
 Resources:
 
+#private subnetworks for database
   DatabaseSubnet1:
     Type: "AWS::EC2::Subnet" 
     Properties: 
       VpcId: !ImportValue CloudVPC
-      # AvailabilityZone: !Ref AvailabilityZone2
       AvailabilityZone: !Select 
         - 0
         - Fn::GetAZs: !Ref 'AWS::Region'
@@ -102,7 +102,6 @@ Resources:
     Type: "AWS::EC2::Subnet" 
     Properties: 
       VpcId: !ImportValue CloudVPC
-      # AvailabilityZone: !Ref AvailabilityZone2
       AvailabilityZone: !Select 
         - 1
         - Fn::GetAZs: !Ref 'AWS::Region'
@@ -127,17 +126,12 @@ Resources:
       MasterUsername: !Ref DatabaseUserName
       MasterUserPassword: !Ref DatabasePassword
       DBInstanceClass: !Ref DatabaseInstanceClass
-      # DBSecurityGroups: !Ref DatabseInstanceSecurityGroup
       VPCSecurityGroups: 
         - !GetAtt DatabseInstanceSecurityGroup.GroupId
       AllocatedStorage: !Ref DatabaseAllocatedStorage
       MultiAZ: !Ref DatabaseMultiAZ
-      # ScalingConfiguration:
-        # AutoPause: true
-        # MaxCapacity: 16
-        # MinCapacity: 2
-        # SecondsUntilAutoPause: 300
   
+  #security group for database
   
   DatabseInstanceSecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -154,13 +148,6 @@ Resources:
         ToPort: '22'
         CidrIp: !Ref PrivateSubnetCIDR1
   
-  # DatabaseSecurityGroup:
-  #   Type: AWS::RDS::DBSecurityGroup
-  #   Properties:
-  #     EC2VpcId: !ImportValue CloudVPC
-  #     DBSecurityGroupIngress:
-  #       EC2SecurityGroupId: !ImportValue AppServerSecurityGroupImport
-  #     GroupDescription: database access
 
 Outputs:
 

@@ -40,9 +40,3 @@ Resources:
           DeviceIndex: 0
 
 
-# Outputs:
-#   AppServerSecurityGroupExport:
-#     Description: Security group for app server
-#     Value: !Ref AppServerSecurityGroup
-#     Export:
-#       Name: AppServerSecurityGroupImport

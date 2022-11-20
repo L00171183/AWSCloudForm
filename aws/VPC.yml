@@ -14,8 +14,6 @@ Resources:
       EnableDnsSupport: 'true'
       EnableDnsHostnames: 'true'
 
-
-
 Outputs:
   CloudFormVPC:
     Description: This is the VPC for our cloud formation

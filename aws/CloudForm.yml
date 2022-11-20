@@ -1,9 +1,4 @@
-# Outputs:
-#   StackSSHSecurityGroup:
-#     Description: The SSH Security Group for our Company
-#     Value: !Ref MyCompanyWideSSHSecurityGroup
-#     Export:
-#       Name: SSHSecurityGroup
+
 
 Parameters:
   AvailabilityZone1: 
